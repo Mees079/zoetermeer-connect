@@ -23,6 +23,8 @@ export type Database = {
           id: string
           image_url: string | null
           location: string
+          max_jongeren: number | null
+          max_ouderen: number | null
           max_participants: number | null
           title: string
           updated_at: string
@@ -35,6 +37,8 @@ export type Database = {
           id?: string
           image_url?: string | null
           location: string
+          max_jongeren?: number | null
+          max_ouderen?: number | null
           max_participants?: number | null
           title: string
           updated_at?: string
@@ -47,6 +51,8 @@ export type Database = {
           id?: string
           image_url?: string | null
           location?: string
+          max_jongeren?: number | null
+          max_ouderen?: number | null
           max_participants?: number | null
           title?: string
           updated_at?: string
@@ -207,14 +213,45 @@ export type Database = {
         }
         Relationships: []
       }
+      user_roles: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
+      app_role: "admin" | "vrijwilliger" | "ouderen" | "jongeren"
       user_role: "ouderen" | "jongeren" | "vrijwilliger"
     }
     CompositeTypes: {
@@ -343,6 +380,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_role: ["admin", "vrijwilliger", "ouderen", "jongeren"],
       user_role: ["ouderen", "jongeren", "vrijwilliger"],
     },
   },
