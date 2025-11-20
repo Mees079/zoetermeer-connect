@@ -12,7 +12,7 @@ import { Loader2, Users } from 'lucide-react';
 import { z } from 'zod';
 
 const authSchema = z.object({
-  email: z.string().email('Ongeldig e-mailadres').max(255),
+  email: z.string().min(1, 'Vul een gebruikersnaam of email in').max(255),
   password: z.string().min(6, 'Wachtwoord moet minimaal 6 tekens zijn').max(100),
   fullName: z.string().min(2, 'Naam moet minimaal 2 tekens zijn').max(100).optional(),
   role: z.enum(['ouderen', 'jongeren', 'vrijwilliger']).optional(),
@@ -226,11 +226,11 @@ const Auth = () => {
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="email">E-mailadres</Label>
+                <Label htmlFor="email">Email / Gebruikersnaam</Label>
                 <Input
                   id="email"
-                  type="email"
-                  placeholder="naam@voorbeeld.nl"
+                  type="text"
+                  placeholder={isLogin ? "ONCParkdreef" : "naam@voorbeeld.nl"}
                   value={formData.email}
                   onChange={(e) =>
                     setFormData({ ...formData, email: e.target.value })

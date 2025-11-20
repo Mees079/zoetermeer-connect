@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
+import { SoundButton } from '@/components/SoundButton';
+import { HexagonBackground } from '@/components/HexagonBackground';
 import { Users, Calendar, Heart, MessageSquare, ArrowRight } from 'lucide-react';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
@@ -9,22 +10,18 @@ const Index = () => {
   const { user } = useAuth();
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen relative">
+      <HexagonBackground />
       <Navbar />
       
       {/* Hero Section */}
-      <section className="pt-32 pb-20 px-4 bg-gradient-to-b from-background via-accent/20 to-background relative overflow-hidden">
-        <div className="absolute inset-0 opacity-20">
-          <div className="absolute top-20 left-10 w-72 h-72 bg-primary/30 rounded-full blur-3xl animate-float" />
-          <div className="absolute bottom-20 right-10 w-96 h-96 bg-secondary/20 rounded-full blur-3xl animate-float" style={{ animationDelay: '2s' }} />
-        </div>
-        
+      <section className="pt-32 pb-20 px-4 relative overflow-hidden">
         <div className="container mx-auto max-w-6xl relative z-10">
           <div className="text-center space-y-8 animate-fade-in">
             <h1 className="text-5xl md:text-7xl font-bold">
               <span className="text-gradient">Generaties</span> Verbinden
               <br />
-              <span className="text-foreground/80">in Zoetermeer</span>
+              <span className="text-foreground">in Zoetermeer</span>
             </h1>
             <p className="text-xl md:text-2xl text-muted-foreground max-w-3xl mx-auto">
               Een platform waar ouderen en jongeren elkaar ontmoeten door leuke activiteiten. 
@@ -33,25 +30,25 @@ const Index = () => {
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
               {user ? (
-                <Link to="/dashboard">
-                  <Button size="lg" className="text-lg px-8 py-6 rounded-2xl shadow-lg hover-lift">
+                <SoundButton asChild size="lg" className="text-lg px-8 py-6 rounded-2xl shadow-glow hover-lift" soundType="success">
+                  <Link to="/dashboard">
                     Naar Dashboard
                     <ArrowRight className="ml-2 w-5 h-5" />
-                  </Button>
-                </Link>
+                  </Link>
+                </SoundButton>
               ) : (
                 <>
-                  <Link to="/auth?mode=signup">
-                    <Button size="lg" className="text-lg px-8 py-6 rounded-2xl shadow-lg hover-lift">
+                  <SoundButton asChild size="lg" className="text-lg px-8 py-6 rounded-2xl shadow-glow hover-lift" soundType="success">
+                    <Link to="/auth?mode=signup">
                       Word Lid
                       <ArrowRight className="ml-2 w-5 h-5" />
-                    </Button>
-                  </Link>
-                  <Link to="/auth">
-                    <Button variant="outline" size="lg" className="text-lg px-8 py-6 rounded-2xl hover-lift">
+                    </Link>
+                  </SoundButton>
+                  <SoundButton asChild variant="outline" size="lg" className="text-lg px-8 py-6 rounded-2xl hover-lift">
+                    <Link to="/auth">
                       Inloggen
-                    </Button>
-                  </Link>
+                    </Link>
+                  </SoundButton>
                 </>
               )}
             </div>
@@ -62,11 +59,11 @@ const Index = () => {
       {/* Features Section */}
       <section className="py-20 px-4">
         <div className="container mx-auto max-w-6xl">
-          <h2 className="text-4xl font-bold text-center mb-16">Hoe het werkt</h2>
+          <h2 className="text-4xl font-bold text-center mb-16 text-gradient">Hoe het werkt</h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             <div className="glass-card p-8 rounded-3xl hover-lift text-center">
-              <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-gradient-to-br from-primary to-primary-glow flex items-center justify-center">
+              <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-gradient-to-br from-primary to-primary-glow flex items-center justify-center shadow-glow">
                 <Users className="w-8 h-8 text-white" />
               </div>
               <h3 className="text-xl font-bold mb-3">Maak een Account</h3>
@@ -76,7 +73,7 @@ const Index = () => {
             </div>
 
             <div className="glass-card p-8 rounded-3xl hover-lift text-center">
-              <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-gradient-to-br from-secondary to-secondary/70 flex items-center justify-center">
+              <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-gradient-to-br from-primary to-primary-glow flex items-center justify-center shadow-glow">
                 <Calendar className="w-8 h-8 text-white" />
               </div>
               <h3 className="text-xl font-bold mb-3">Ontdek Activiteiten</h3>
@@ -86,22 +83,22 @@ const Index = () => {
             </div>
 
             <div className="glass-card p-8 rounded-3xl hover-lift text-center">
-              <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-gradient-to-br from-primary to-primary-glow flex items-center justify-center">
+              <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-gradient-to-br from-secondary to-secondary/70 flex items-center justify-center shadow-glow">
                 <Heart className="w-8 h-8 text-white" />
               </div>
               <h3 className="text-xl font-bold mb-3">Doe Mee</h3>
               <p className="text-muted-foreground">
-                Schrijf je in voor activiteiten en maak nieuwe connecties in de gemeenschap.
+                Schrijf je in voor activiteiten en maak verbinding met anderen in je buurt.
               </p>
             </div>
 
             <div className="glass-card p-8 rounded-3xl hover-lift text-center">
-              <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-gradient-to-br from-secondary to-secondary/70 flex items-center justify-center">
+              <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-gradient-to-br from-accent to-accent/70 flex items-center justify-center shadow-glow">
                 <MessageSquare className="w-8 h-8 text-white" />
               </div>
-              <h3 className="text-xl font-bold mb-3">Deel Je Ervaring</h3>
+              <h3 className="text-xl font-bold mb-3">Deel Ideeën</h3>
               <p className="text-muted-foreground">
-                Laat een recensie achter en help anderen de mooiste activiteiten te vinden.
+                Suggereer nieuwe activiteiten en help mee de gemeenschap te versterken.
               </p>
             </div>
           </div>
@@ -109,22 +106,24 @@ const Index = () => {
       </section>
 
       {/* CTA Section */}
-      {!user && (
-        <section className="py-20 px-4 bg-gradient-to-r from-primary/10 via-secondary/10 to-primary/10">
-          <div className="container mx-auto max-w-4xl text-center">
-            <h2 className="text-4xl font-bold mb-6">Klaar om deel te nemen?</h2>
-            <p className="text-xl text-muted-foreground mb-8">
-              Word lid van onze gemeenschap en ontmoet nieuwe mensen in Zoetermeer
+      <section className="py-20 px-4">
+        <div className="container mx-auto max-w-4xl">
+          <div className="glass-card p-12 rounded-3xl text-center space-y-6">
+            <h2 className="text-4xl font-bold text-gradient">Klaar om te beginnen?</h2>
+            <p className="text-xl text-muted-foreground">
+              Sluit je aan bij onze gemeenschap en ontdek hoe leuk het is om generaties te verbinden!
             </p>
-            <Link to="/auth?mode=signup">
-              <Button size="lg" className="text-lg px-8 py-6 rounded-2xl shadow-lg hover-lift">
-                Start Nu
-                <ArrowRight className="ml-2 w-5 h-5" />
-              </Button>
-            </Link>
+            {!user && (
+              <SoundButton asChild size="lg" className="text-lg px-8 py-6 rounded-2xl shadow-glow" soundType="success">
+                <Link to="/auth?mode=signup">
+                  Meld je Nu Aan
+                  <ArrowRight className="ml-2 w-5 h-5" />
+                </Link>
+              </SoundButton>
+            )}
           </div>
-        </section>
-      )}
+        </div>
+      </section>
 
       <Footer />
     </div>

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Menu, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { SoundButton } from '@/components/SoundButton';
 import logo from '@/assets/logo.png';
 
 export const Navbar = () => {
@@ -30,7 +30,7 @@ export const Navbar = () => {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           <Link to="/" className="flex items-center space-x-3">
-            <img src={logo} alt="ONC Logo" className="h-10 w-auto" />
+            <img src={logo} alt="ONC Logo" className="h-10 w-auto logo-no-bg" />
             <span className="text-2xl font-bold text-gradient">ONC Zoetermeer</span>
           </Link>
 
@@ -51,14 +51,14 @@ export const Navbar = () => {
             ))}
             
             {user && (
-              <Button
+              <SoundButton
                 onClick={signOut}
                 variant="outline"
                 size="sm"
                 className="rounded-xl"
               >
                 Uitloggen
-              </Button>
+              </SoundButton>
             )}
           </div>
 
@@ -96,7 +96,7 @@ export const Navbar = () => {
               ))}
               
               {user && (
-                <Button
+                <SoundButton
                   onClick={() => {
                     signOut();
                     setMobileMenuOpen(false);
@@ -105,7 +105,7 @@ export const Navbar = () => {
                   className="mx-4 mb-4 rounded-xl"
                 >
                   Uitloggen
-                </Button>
+                </SoundButton>
               )}
             </div>
           </div>
