@@ -6,19 +6,22 @@ interface Profile {
   id: string;
   email: string;
   full_name: string | null;
-  role: 'ouderen' | 'jongeren' | 'vrijwilliger';
   phone: string | null;
   bio: string | null;
   avatar_url: string | null;
 }
 
+type UserRole = 'admin' | 'vrijwilliger' | 'ouderen' | 'jongeren';
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   profile: Profile | null;
+  roles: UserRole[];
   loading: boolean;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  hasRole: (role: UserRole) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -27,17 +30,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [roles, setRoles] = useState<UserRole[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchProfile = async (userId: string) => {
-    const { data, error } = await supabase
+    const { data: profileData } = await supabase
       .from('profiles')
-      .select('*')
+      .select('id, email, full_name, phone, bio, avatar_url')
       .eq('id', userId)
       .single();
     
-    if (!error && data) {
-      setProfile(data as Profile);
+    const { data: rolesData } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', userId);
+    
+    if (profileData) {
+      setProfile(profileData as Profile);
+    }
+    
+    if (rolesData) {
+      setRoles(rolesData.map(r => r.role as UserRole));
     }
   };
 
@@ -83,10 +96,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser(null);
     setSession(null);
     setProfile(null);
+    setRoles([]);
+  };
+
+  const hasRole = (role: UserRole) => {
+    return roles.includes(role);
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, profile, loading, signOut, refreshProfile }}>
+    <AuthContext.Provider value={{ user, session, profile, roles, loading, signOut, refreshProfile, hasRole }}>
       {children}
     </AuthContext.Provider>
   );
