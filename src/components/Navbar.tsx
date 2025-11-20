@@ -12,7 +12,6 @@ export const Navbar = () => {
 
   const navLinks = user
     ? [
-        { to: '/dashboard', label: 'Dashboard' },
         { to: '/activiteiten', label: 'Activiteiten' },
         { to: '/suggesties', label: 'Suggesties' },
         { to: '/contact', label: 'Contact' },

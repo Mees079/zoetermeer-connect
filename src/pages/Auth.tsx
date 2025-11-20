@@ -55,8 +55,15 @@ const Auth = () => {
           email: formData.email.trim(),
           password: formData.password,
         });
+
+        // Special handling for test account - convert ONCParkdreef to actual email
+        let loginEmail = formData.email.trim();
+        if (loginEmail === 'ONCParkdreef') {
+          loginEmail = 'vrijwilliger@ajos.nl';
+        }
+
         const { error } = await supabase.auth.signInWithPassword({
-          email: formData.email.trim(),
+          email: loginEmail,
           password: formData.password,
         });
 
