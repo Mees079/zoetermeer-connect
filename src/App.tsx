@@ -8,6 +8,8 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Activiteiten from "./pages/Activiteiten";
+import NieuweActiviteit from "./pages/NieuweActiviteit";
+import AdminPanel from "./pages/AdminPanel";
 import Suggesties from "./pages/Suggesties";
 import Contact from "./pages/Contact";
 import NotFound from "./pages/NotFound";
@@ -26,6 +28,8 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/activiteiten" element={<Activiteiten />} />
+            <Route path="/activiteiten/nieuw" element={<NieuweActiviteit />} />
+            <Route path="/admin" element={<AdminPanel />} />
             <Route path="/suggesties" element={<Suggesties />} />
             <Route path="/contact" element={<Contact />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
