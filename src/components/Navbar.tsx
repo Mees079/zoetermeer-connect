@@ -30,8 +30,8 @@ export const Navbar = () => {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           <Link to="/" className="flex items-center space-x-3">
-            <img src={logo} alt="ONC Logo" className="h-10 w-auto logo-no-bg" />
-            <span className="text-2xl font-bold text-gradient">ONC Zoetermeer</span>
+            <img src={logo} alt="AJOS Logo" className="h-10 w-auto" />
+            <span className="text-2xl font-bold text-gradient">AJOS</span>
           </Link>
 
           {/* Desktop Navigation */}

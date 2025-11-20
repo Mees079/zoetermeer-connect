@@ -7,11 +7,11 @@ export const Footer = () => {
       <div className="container mx-auto px-4">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div className="flex items-center space-x-3">
-            <img src={logo} alt="ONC Logo" className="h-12 w-auto logo-no-bg" />
+            <img src={logo} alt="AJOS Logo" className="h-12 w-auto" />
             <div>
-              <h3 className="font-semibold text-primary">ONC Zoetermeer</h3>
+              <h3 className="font-semibold text-primary">AJOS</h3>
               <p className="text-sm text-muted-foreground">
-                Generaties verbinden
+                Activiteiten Jongeren Ouderen Seghweart
               </p>
             </div>
           </div>
@@ -48,7 +48,7 @@ export const Footer = () => {
         
         <div className="mt-8 pt-8 border-t border-border">
           <div className="text-center text-sm text-muted-foreground space-y-2">
-            <p>&copy; {new Date().getFullYear()} ONC Zoetermeer. Alle rechten voorbehouden.</p>
+            <p>&copy; {new Date().getFullYear()} AJOS - In samenwerking met ONC Parkdreef</p>
             <p className="text-primary font-medium text-base">
               Gemaakt door De kippetjes VWO 3 Oranje Nassau College Parkdreef
             </p>

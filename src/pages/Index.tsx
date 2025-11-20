@@ -19,13 +19,13 @@ const Index = () => {
         <div className="container mx-auto max-w-6xl relative z-10">
           <div className="text-center space-y-8 animate-fade-in">
             <h1 className="text-5xl md:text-7xl font-bold">
-              <span className="text-gradient">Generaties</span> Verbinden
+              <span className="text-gradient">AJOS</span>
               <br />
-              <span className="text-foreground">in Zoetermeer</span>
+              <span className="text-foreground text-3xl md:text-4xl">Activiteiten Jongeren Ouderen Seghweart</span>
             </h1>
             <p className="text-xl md:text-2xl text-muted-foreground max-w-3xl mx-auto">
-              Een platform waar ouderen en jongeren elkaar ontmoeten door leuke activiteiten. 
-              Samen bouwen we aan een warme, levendige gemeenschap.
+              Een platform waar ouderen en jongeren elkaar ontmoeten door leuke activiteiten.<br/>
+              In samenwerking met ONC Parkdreef bouwen we aan een warme, levendige gemeenschap.
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">

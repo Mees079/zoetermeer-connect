@@ -1,42 +1,47 @@
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { SoundButton } from '@/components/SoundButton';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Lightbulb, Loader2, Send } from 'lucide-react';
+import { Lightbulb, Loader2, Upload, Trash2, Edit, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { nl } from 'date-fns/locale';
 import { z } from 'zod';
 
 const suggestionSchema = z.object({
-  title: z.string().trim().min(3, 'Titel moet minimaal 3 tekens zijn').max(100, 'Titel mag maximaal 100 tekens zijn'),
-  description: z.string().trim().min(10, 'Beschrijving moet minimaal 10 tekens zijn').max(1000, 'Beschrijving mag maximaal 1000 tekens zijn'),
+  title: z.string().trim().min(3, 'Titel moet minimaal 3 tekens zijn').max(100),
+  description: z.string().trim().min(10, 'Beschrijving moet minimaal 10 tekens zijn').max(1000),
 });
 
 interface Suggestion {
   id: string;
   title: string;
   description: string;
+  image_url: string | null;
   created_at: string;
+  suggested_by: string;
   profiles: {
     full_name: string | null;
-    role: string;
   };
 }
 
 const Suggesties = () => {
-  const { user, loading: authLoading } = useAuth();
+  const { user, hasRole, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -60,8 +65,7 @@ const Suggesties = () => {
         .select(`
           *,
           profiles (
-            full_name,
-            role
+            full_name
           )
         `)
         .order('created_at', { ascending: false });
@@ -76,29 +80,90 @@ const Suggesties = () => {
     }
   };
 
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('Afbeelding mag maximaal 5MB zijn');
+        return;
+      }
+      setImageFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const uploadImage = async (file: File): Promise<string | null> => {
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user!.id}/${Math.random()}.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('suggestion-images')
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage
+        .from('suggestion-images')
+        .getPublicUrl(fileName);
+
+      return data.publicUrl;
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      toast.error('Fout bij het uploaden van afbeelding');
+      return null;
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
 
     try {
-      // Validate input
       const validatedData = suggestionSchema.parse({
         title: formData.title.trim(),
         description: formData.description.trim(),
       });
 
-      const { error } = await supabase
-        .from('activity_suggestions')
-        .insert({
-          title: validatedData.title,
-          description: validatedData.description,
-          suggested_by: user!.id,
-        });
+      let imageUrl = null;
+      if (imageFile) {
+        imageUrl = await uploadImage(imageFile);
+      }
 
-      if (error) throw error;
+      if (editingId) {
+        const { error } = await supabase
+          .from('activity_suggestions')
+          .update({
+            title: validatedData.title,
+            description: validatedData.description,
+            ...(imageUrl && { image_url: imageUrl }),
+          })
+          .eq('id', editingId);
 
-      toast.success('Suggestie ingediend!');
+        if (error) throw error;
+        toast.success('Suggestie bijgewerkt!');
+        setEditingId(null);
+      } else {
+        const { error } = await supabase
+          .from('activity_suggestions')
+          .insert({
+            title: validatedData.title,
+            description: validatedData.description,
+            suggested_by: user!.id,
+            ...(imageUrl && { image_url: imageUrl }),
+          });
+
+        if (error) throw error;
+        toast.success('Suggestie ingediend!');
+      }
+
       setFormData({ title: '', description: '' });
+      setImageFile(null);
+      setImagePreview(null);
       fetchSuggestions();
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -112,6 +177,42 @@ const Suggesties = () => {
     }
   };
 
+  const handleEdit = (suggestion: Suggestion) => {
+    setEditingId(suggestion.id);
+    setFormData({
+      title: suggestion.title,
+      description: suggestion.description,
+    });
+    if (suggestion.image_url) {
+      setImagePreview(suggestion.image_url);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Weet je zeker dat je deze suggestie wilt verwijderen?')) return;
+
+    try {
+      const { error } = await supabase
+        .from('activity_suggestions')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      toast.success('Suggestie verwijderd!');
+      fetchSuggestions();
+    } catch (error) {
+      console.error('Error deleting suggestion:', error);
+      toast.error('Fout bij het verwijderen van suggestie');
+    }
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setFormData({ title: '', description: '' });
+    setImageFile(null);
+    setImagePreview(null);
+  };
+
   if (authLoading || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -119,6 +220,8 @@ const Suggesties = () => {
       </div>
     );
   }
+
+  const isVrijwilliger = hasRole('vrijwilliger');
 
   return (
     <div className="min-h-screen bg-background">
@@ -131,18 +234,19 @@ const Suggesties = () => {
               <span className="text-gradient">Suggesties</span>
             </h1>
             <p className="text-muted-foreground">
-              Deel je ideeën voor nieuwe activiteiten met de gemeenschap
+              Deel jouw ideeën voor nieuwe activiteiten
             </p>
           </div>
 
+          {/* Submit Form */}
           <Card className="glass-card mb-8">
             <CardHeader>
-              <CardTitle className="flex items-center">
-                <Lightbulb className="w-6 h-6 mr-2 text-primary" />
-                Nieuwe Suggestie
+              <CardTitle className="flex items-center gap-2">
+                <Lightbulb className="w-5 h-5" />
+                {editingId ? 'Suggestie Bewerken' : 'Nieuwe Suggestie'}
               </CardTitle>
               <CardDescription>
-                Wat voor activiteit zou je graag willen zien?
+                {editingId ? 'Pas je suggestie aan' : 'Wat voor activiteit zou je graag willen zien?'}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -151,11 +255,9 @@ const Suggesties = () => {
                   <Label htmlFor="title">Titel</Label>
                   <Input
                     id="title"
-                    placeholder="Bijv. Kookworkshop voor beginners"
                     value={formData.title}
-                    onChange={(e) =>
-                      setFormData({ ...formData, title: e.target.value })
-                    }
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    placeholder="Bijvoorbeeld: Spelletjesmiddag in het park"
                     required
                     maxLength={100}
                   />
@@ -165,60 +267,141 @@ const Suggesties = () => {
                   <Label htmlFor="description">Beschrijving</Label>
                   <Textarea
                     id="description"
-                    placeholder="Beschrijf je idee in detail..."
                     value={formData.description}
-                    onChange={(e) =>
-                      setFormData({ ...formData, description: e.target.value })
-                    }
-                    required
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    placeholder="Vertel meer over je idee..."
                     rows={4}
+                    required
                     maxLength={1000}
                   />
-                  <p className="text-xs text-muted-foreground">
-                    {formData.description.length}/1000 tekens
-                  </p>
                 </div>
 
-                <Button
-                  type="submit"
-                  className="w-full rounded-xl"
-                  disabled={submitting}
-                >
-                  {submitting && <Loader2 className="mr-2 w-4 h-4 animate-spin" />}
-                  <Send className="mr-2 w-4 h-4" />
-                  Suggestie Indienen
-                </Button>
+                <div className="space-y-2">
+                  <Label htmlFor="image">Foto (optioneel, max 5MB)</Label>
+                  <div className="flex items-center gap-4">
+                    <Input
+                      id="image"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageChange}
+                      className="hidden"
+                    />
+                    <SoundButton
+                      type="button"
+                      variant="outline"
+                      onClick={() => document.getElementById('image')?.click()}
+                      className="flex items-center gap-2"
+                    >
+                      <Upload className="w-4 h-4" />
+                      {imageFile ? 'Andere foto kiezen' : 'Foto uploaden'}
+                    </SoundButton>
+                    {imagePreview && (
+                      <div className="relative">
+                        <img src={imagePreview} alt="Preview" className="h-20 w-20 object-cover rounded-lg" />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setImageFile(null);
+                            setImagePreview(null);
+                          }}
+                          className="absolute -top-2 -right-2 bg-destructive text-white rounded-full p-1"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <SoundButton
+                    type="submit"
+                    disabled={submitting}
+                    className="flex-1 bg-gradient-to-r from-primary to-primary-glow"
+                    soundType="success"
+                  >
+                    {submitting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        {editingId ? 'Bijwerken...' : 'Indienen...'}
+                      </>
+                    ) : (
+                      <>{editingId ? 'Bijwerken' : 'Suggestie Indienen'}</>
+                    )}
+                  </SoundButton>
+                  {editingId && (
+                    <SoundButton
+                      type="button"
+                      variant="outline"
+                      onClick={cancelEdit}
+                    >
+                      Annuleren
+                    </SoundButton>
+                  )}
+                </div>
               </form>
             </CardContent>
           </Card>
 
+          {/* Suggestions List */}
           <div className="space-y-4">
-            <h2 className="text-2xl font-bold">Eerdere Suggesties</h2>
+            <h2 className="text-2xl font-bold">Alle Suggesties</h2>
+            
             {suggestions.length === 0 ? (
-              <Card className="glass-card text-center py-12">
-                <CardContent>
-                  <Lightbulb className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-                  <p className="text-lg text-muted-foreground">
-                    Nog geen suggesties. Wees de eerste!
-                  </p>
+              <Card className="glass-card">
+                <CardContent className="py-12 text-center text-muted-foreground">
+                  Nog geen suggesties. Wees de eerste!
                 </CardContent>
               </Card>
             ) : (
               suggestions.map((suggestion) => (
                 <Card key={suggestion.id} className="glass-card hover-lift">
                   <CardHeader>
-                    <div className="flex justify-between items-start">
-                      <CardTitle className="text-xl">{suggestion.title}</CardTitle>
-                      <div className="text-xs text-muted-foreground">
-                        {format(new Date(suggestion.created_at), 'd MMM yyyy', { locale: nl })}
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <CardTitle className="flex items-center gap-2">
+                          <Lightbulb className="w-5 h-5 text-primary" />
+                          {suggestion.title}
+                        </CardTitle>
+                        <CardDescription>
+                          Door {suggestion.profiles?.full_name || 'Anoniem'} •{' '}
+                          {format(new Date(suggestion.created_at), 'd MMMM yyyy', { locale: nl })}
+                        </CardDescription>
                       </div>
+                      {isVrijwilliger && (
+                        <div className="flex gap-2">
+                          <SoundButton
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEdit(suggestion)}
+                          >
+                            <Edit className="w-4 h-4" />
+                          </SoundButton>
+                          <SoundButton
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDelete(suggestion.id)}
+                            className="text-destructive hover:bg-destructive/10"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </SoundButton>
+                        </div>
+                      )}
                     </div>
-                    <CardDescription className="text-sm">
-                      Door {suggestion.profiles.full_name || 'Anoniem'} ({suggestion.profiles.role})
-                    </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-foreground/80">{suggestion.description}</p>
+                    {suggestion.image_url && (
+                      <div className="mb-4">
+                        <img
+                          src={suggestion.image_url}
+                          alt={suggestion.title}
+                          className="w-full max-h-64 object-cover rounded-lg"
+                        />
+                      </div>
+                    )}
+                    <p className="text-foreground/80 whitespace-pre-wrap">
+                      {suggestion.description}
+                    </p>
                   </CardContent>
                 </Card>
               ))
