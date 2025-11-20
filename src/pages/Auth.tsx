@@ -11,11 +11,16 @@ import { toast } from 'sonner';
 import { Loader2, Users } from 'lucide-react';
 import { z } from 'zod';
 
-const authSchema = z.object({
-  email: z.string().min(1, 'Vul een gebruikersnaam of email in').max(255),
+const loginSchema = z.object({
+  email: z.string().min(1, 'Vul een gebruikersnaam in').max(255),
   password: z.string().min(6, 'Wachtwoord moet minimaal 6 tekens zijn').max(100),
-  fullName: z.string().min(2, 'Naam moet minimaal 2 tekens zijn').max(100).optional(),
-  role: z.enum(['ouderen', 'jongeren', 'vrijwilliger']).optional(),
+});
+
+const signupSchema = z.object({
+  email: z.string().email('Ongeldig e-mailadres').max(255),
+  password: z.string().min(6, 'Wachtwoord moet minimaal 6 tekens zijn').max(100),
+  fullName: z.string().min(2, 'Naam moet minimaal 2 tekens zijn').max(100),
+  role: z.enum(['ouderen', 'jongeren', 'vrijwilliger']),
 });
 
 const Auth = () => {
@@ -44,19 +49,12 @@ const Auth = () => {
     setLoading(true);
 
     try {
-      // Validate input
-      const validationData = {
-        email: formData.email.trim(),
-        password: formData.password,
-        ...((!isLogin && !isVolunteer) && {
-          fullName: formData.fullName.trim(),
-          role: formData.role,
-        }),
-      };
-
-      authSchema.parse(validationData);
-
       if (isLogin) {
+        // Validate login (allows username without @)
+        loginSchema.parse({
+          email: formData.email.trim(),
+          password: formData.password,
+        });
         const { error } = await supabase.auth.signInWithPassword({
           email: formData.email.trim(),
           password: formData.password,
@@ -74,6 +72,15 @@ const Auth = () => {
         toast.success('Welkom terug!');
         navigate('/dashboard');
       } else {
+        // Validate signup (requires proper email)
+        if (!isVolunteer) {
+          signupSchema.parse({
+            email: formData.email.trim(),
+            password: formData.password,
+            fullName: formData.fullName.trim(),
+            role: formData.role,
+          });
+        }
         if (!isVolunteer && !formData.role) {
           toast.error('Selecteer een rol');
           return;

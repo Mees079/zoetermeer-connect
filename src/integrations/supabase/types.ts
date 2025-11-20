@@ -150,6 +150,7 @@ export type Database = {
           created_at: string
           description: string
           id: string
+          image_url: string | null
           suggested_by: string
           title: string
         }
@@ -157,6 +158,7 @@ export type Database = {
           created_at?: string
           description: string
           id?: string
+          image_url?: string | null
           suggested_by: string
           title: string
         }
@@ -164,6 +166,7 @@ export type Database = {
           created_at?: string
           description?: string
           id?: string
+          image_url?: string | null
           suggested_by?: string
           title?: string
         }
