@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { SoundButton } from '@/components/SoundButton';
@@ -7,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -18,6 +18,8 @@ import { z } from 'zod';
 const suggestionSchema = z.object({
   title: z.string().trim().min(3, 'Titel moet minimaal 3 tekens zijn').max(100),
   description: z.string().trim().min(10, 'Beschrijving moet minimaal 10 tekens zijn').max(1000),
+  suggesterName: z.string().trim().min(2, 'Naam moet minimaal 2 tekens zijn').max(100),
+  suggesterType: z.enum(['ouderen', 'jongeren'], { required_error: 'Selecteer of je ouderen of jongeren bent' }),
 });
 
 interface Suggestion {
@@ -26,15 +28,16 @@ interface Suggestion {
   description: string;
   image_url: string | null;
   created_at: string;
-  suggested_by: string;
-  profiles: {
+  suggested_by: string | null;
+  suggester_name: string | null;
+  suggester_type: string | null;
+  profiles?: {
     full_name: string | null;
   };
 }
 
 const Suggesties = () => {
-  const { user, hasRole, loading: authLoading } = useAuth();
-  const navigate = useNavigate();
+  const { user, hasRole } = useAuth();
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -45,18 +48,15 @@ const Suggesties = () => {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
+    suggesterName: '',
+    suggesterType: '' as 'ouderen' | 'jongeren' | '',
   });
 
-  useEffect(() => {
-    if (!authLoading && !user) {
-      navigate('/auth');
-      return;
-    }
+  const isVrijwilliger = user && hasRole('vrijwilliger');
 
-    if (user) {
-      fetchSuggestions();
-    }
-  }, [user, authLoading, navigate]);
+  useEffect(() => {
+    fetchSuggestions();
+  }, []);
 
   const fetchSuggestions = async () => {
     try {
@@ -99,7 +99,7 @@ const Suggesties = () => {
   const uploadImage = async (file: File): Promise<string | null> => {
     try {
       const fileExt = file.name.split('.').pop();
-      const fileName = `${user!.id}/${Math.random()}.${fileExt}`;
+      const fileName = `anonymous/${Date.now()}-${Math.random()}.${fileExt}`;
       
       const { error: uploadError } = await supabase.storage
         .from('suggestion-images')
@@ -124,23 +124,14 @@ const Suggesties = () => {
     setSubmitting(true);
 
     try {
-      const validatedData = suggestionSchema.parse({
-        title: formData.title.trim(),
-        description: formData.description.trim(),
-      });
-
-      let imageUrl = null;
-      if (imageFile) {
-        imageUrl = await uploadImage(imageFile);
-      }
-
-      if (editingId) {
+      // For volunteers editing, don't require name/type
+      if (editingId && isVrijwilliger) {
         const { error } = await supabase
           .from('activity_suggestions')
           .update({
-            title: validatedData.title,
-            description: validatedData.description,
-            ...(imageUrl && { image_url: imageUrl }),
+            title: formData.title.trim(),
+            description: formData.description.trim(),
+            ...(imageFile && { image_url: await uploadImage(imageFile) }),
           })
           .eq('id', editingId);
 
@@ -148,12 +139,26 @@ const Suggesties = () => {
         toast.success('Suggestie bijgewerkt!');
         setEditingId(null);
       } else {
+        // For new suggestions (anyone can create)
+        const validatedData = suggestionSchema.parse({
+          title: formData.title.trim(),
+          description: formData.description.trim(),
+          suggesterName: formData.suggesterName.trim(),
+          suggesterType: formData.suggesterType,
+        });
+
+        let imageUrl = null;
+        if (imageFile) {
+          imageUrl = await uploadImage(imageFile);
+        }
+
         const { error } = await supabase
           .from('activity_suggestions')
           .insert({
             title: validatedData.title,
             description: validatedData.description,
-            suggested_by: user!.id,
+            suggester_name: validatedData.suggesterName,
+            suggester_type: validatedData.suggesterType,
             ...(imageUrl && { image_url: imageUrl }),
           });
 
@@ -161,7 +166,7 @@ const Suggesties = () => {
         toast.success('Suggestie ingediend!');
       }
 
-      setFormData({ title: '', description: '' });
+      setFormData({ title: '', description: '', suggesterName: '', suggesterType: '' });
       setImageFile(null);
       setImagePreview(null);
       fetchSuggestions();
@@ -182,6 +187,8 @@ const Suggesties = () => {
     setFormData({
       title: suggestion.title,
       description: suggestion.description,
+      suggesterName: suggestion.suggester_name || '',
+      suggesterType: (suggestion.suggester_type as 'ouderen' | 'jongeren') || '',
     });
     if (suggestion.image_url) {
       setImagePreview(suggestion.image_url);
@@ -208,20 +215,28 @@ const Suggesties = () => {
 
   const cancelEdit = () => {
     setEditingId(null);
-    setFormData({ title: '', description: '' });
+    setFormData({ title: '', description: '', suggesterName: '', suggesterType: '' });
     setImageFile(null);
     setImagePreview(null);
   };
 
-  if (authLoading || loading) {
+  const getSuggesterDisplay = (suggestion: Suggestion) => {
+    if (suggestion.suggester_name) {
+      return `${suggestion.suggester_name} (${suggestion.suggester_type === 'ouderen' ? 'Ouderen' : 'Jongeren'})`;
+    }
+    if (suggestion.profiles?.full_name) {
+      return suggestion.profiles.full_name;
+    }
+    return 'Anoniem';
+  };
+
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
   }
-
-  const isVrijwilliger = hasRole('vrijwilliger');
 
   return (
     <div className="min-h-screen bg-background">
@@ -246,11 +261,46 @@ const Suggesties = () => {
                 {editingId ? 'Suggestie Bewerken' : 'Nieuwe Suggestie'}
               </CardTitle>
               <CardDescription>
-                {editingId ? 'Pas je suggestie aan' : 'Wat voor activiteit zou je graag willen zien?'}
+                {editingId ? 'Pas de suggestie aan' : 'Wat voor activiteit zou je graag willen zien?'}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
+                {!editingId && (
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="suggesterName">Je naam</Label>
+                        <Input
+                          id="suggesterName"
+                          value={formData.suggesterName}
+                          onChange={(e) => setFormData({ ...formData, suggesterName: e.target.value })}
+                          placeholder="Vul je naam in"
+                          required
+                          maxLength={100}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="suggesterType">Ik ben</Label>
+                        <Select
+                          value={formData.suggesterType}
+                          onValueChange={(value: 'ouderen' | 'jongeren') =>
+                            setFormData({ ...formData, suggesterType: value })
+                          }
+                        >
+                          <SelectTrigger id="suggesterType">
+                            <SelectValue placeholder="Selecteer..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="ouderen">Ouderen</SelectItem>
+                            <SelectItem value="jongeren">Jongeren</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </>
+                )}
+
                 <div className="space-y-2">
                   <Label htmlFor="title">Titel</Label>
                   <Input
@@ -304,7 +354,7 @@ const Suggesties = () => {
                             setImageFile(null);
                             setImagePreview(null);
                           }}
-                          className="absolute -top-2 -right-2 bg-destructive text-white rounded-full p-1"
+                          className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1"
                         >
                           <X className="w-3 h-3" />
                         </button>
@@ -364,7 +414,7 @@ const Suggesties = () => {
                           {suggestion.title}
                         </CardTitle>
                         <CardDescription>
-                          Door {suggestion.profiles?.full_name || 'Anoniem'} •{' '}
+                          Door {getSuggesterDisplay(suggestion)} •{' '}
                           {format(new Date(suggestion.created_at), 'd MMMM yyyy', { locale: nl })}
                         </CardDescription>
                       </div>
