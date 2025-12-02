@@ -1,16 +1,25 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Calendar, MapPin, Users, Loader2, Clock, Star } from 'lucide-react';
 import { format } from 'date-fns';
 import { nl } from 'date-fns/locale';
+import { z } from 'zod';
+
+const participantSchema = z.object({
+  name: z.string().trim().min(2, 'Naam moet minimaal 2 tekens zijn').max(100),
+  type: z.enum(['ouderen', 'jongeren'], { required_error: 'Selecteer of je ouderen of jongeren bent' }),
+});
 
 interface Activity {
   id: string;
@@ -19,30 +28,34 @@ interface Activity {
   location: string;
   date: string;
   max_participants: number | null;
+  max_ouderen: number | null;
+  max_jongeren: number | null;
   image_url: string | null;
   created_by: string;
   participant_count?: number;
-  is_participant?: boolean;
+  ouderen_count?: number;
+  jongeren_count?: number;
   average_rating?: number;
   review_count?: number;
 }
 
 const Activiteiten = () => {
-  const { user, loading: authLoading } = useAuth();
-  const navigate = useNavigate();
+  const { user, hasRole } = useAuth();
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
+  const [joiningActivity, setJoiningActivity] = useState<string | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
+  const [participantForm, setParticipantForm] = useState({
+    name: '',
+    type: '' as 'ouderen' | 'jongeren' | '',
+  });
+
+  const isVrijwilliger = user && hasRole('vrijwilliger');
 
   useEffect(() => {
-    if (!authLoading && !user) {
-      navigate('/auth');
-      return;
-    }
-
-    if (user) {
-      fetchActivities();
-    }
-  }, [user, authLoading, navigate]);
+    fetchActivities();
+  }, []);
 
   const fetchActivities = async () => {
     try {
@@ -54,7 +67,6 @@ const Activiteiten = () => {
 
       if (activitiesError) throw activitiesError;
 
-      // Get participant counts and check if user is participant
       const activitiesWithDetails = await Promise.all(
         (activitiesData || []).map(async (activity) => {
           const { count } = await supabase
@@ -62,14 +74,19 @@ const Activiteiten = () => {
             .select('*', { count: 'exact', head: true })
             .eq('activity_id', activity.id);
 
-          const { data: participantData } = await supabase
+          // Count by type
+          const { count: ouderenCount } = await supabase
             .from('activity_participants')
-            .select('id')
+            .select('*', { count: 'exact', head: true })
             .eq('activity_id', activity.id)
-            .eq('user_id', user!.id)
-            .maybeSingle();
+            .eq('participant_type', 'ouderen');
 
-          // Get average rating
+          const { count: jongerenCount } = await supabase
+            .from('activity_participants')
+            .select('*', { count: 'exact', head: true })
+            .eq('activity_id', activity.id)
+            .eq('participant_type', 'jongeren');
+
           const { data: reviewsData } = await supabase
             .from('activity_reviews')
             .select('rating')
@@ -82,7 +99,8 @@ const Activiteiten = () => {
           return {
             ...activity,
             participant_count: count || 0,
-            is_participant: !!participantData,
+            ouderen_count: ouderenCount || 0,
+            jongeren_count: jongerenCount || 0,
             average_rating: averageRating,
             review_count: reviewsData?.length || 0,
           };
@@ -98,51 +116,70 @@ const Activiteiten = () => {
     }
   };
 
-  const handleJoinActivity = async (activityId: string) => {
+  const openJoinDialog = (activity: Activity) => {
+    setSelectedActivity(activity);
+    setParticipantForm({ name: '', type: '' });
+    setDialogOpen(true);
+  };
+
+  const handleJoinActivity = async () => {
+    if (!selectedActivity) return;
+
     try {
+      const validatedData = participantSchema.parse({
+        name: participantForm.name.trim(),
+        type: participantForm.type,
+      });
+
+      // Check if max for this type is reached
+      if (validatedData.type === 'ouderen' && selectedActivity.max_ouderen !== null) {
+        if ((selectedActivity.ouderen_count || 0) >= selectedActivity.max_ouderen) {
+          toast.error('Maximum aantal ouderen is bereikt');
+          return;
+        }
+      }
+      if (validatedData.type === 'jongeren' && selectedActivity.max_jongeren !== null) {
+        if ((selectedActivity.jongeren_count || 0) >= selectedActivity.max_jongeren) {
+          toast.error('Maximum aantal jongeren is bereikt');
+          return;
+        }
+      }
+
+      setJoiningActivity(selectedActivity.id);
+
       const { error } = await supabase
         .from('activity_participants')
         .insert({
-          activity_id: activityId,
-          user_id: user!.id,
+          activity_id: selectedActivity.id,
+          participant_name: validatedData.name,
+          participant_type: validatedData.type,
         });
-
-      if (error) {
-        if (error.message.includes('duplicate')) {
-          toast.error('Je bent al ingeschreven voor deze activiteit');
-        } else {
-          throw error;
-        }
-        return;
-      }
-
-      toast.success('Je bent ingeschreven!');
-      fetchActivities();
-    } catch (error) {
-      console.error('Error joining activity:', error);
-      toast.error('Fout bij het inschrijven');
-    }
-  };
-
-  const handleLeaveActivity = async (activityId: string) => {
-    try {
-      const { error } = await supabase
-        .from('activity_participants')
-        .delete()
-        .eq('activity_id', activityId)
-        .eq('user_id', user!.id);
 
       if (error) throw error;
 
-      toast.success('Je bent uitgeschreven');
+      toast.success('Je bent ingeschreven voor ' + selectedActivity.title + '!');
+      setDialogOpen(false);
       fetchActivities();
     } catch (error) {
-      console.error('Error leaving activity:', error);
-      toast.error('Fout bij het uitschrijven');
+      if (error instanceof z.ZodError) {
+        toast.error(error.errors[0].message);
+      } else {
+        console.error('Error joining activity:', error);
+        toast.error('Fout bij het inschrijven');
+      }
+    } finally {
+      setJoiningActivity(null);
     }
   };
 
-  if (authLoading || loading) {
+  const isFull = (activity: Activity) => {
+    if (activity.max_participants !== null && activity.participant_count! >= activity.max_participants) {
+      return true;
+    }
+    return false;
+  };
+
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -190,12 +227,7 @@ const Activiteiten = () => {
                     </div>
                   )}
                   <CardHeader>
-                    <div className="flex justify-between items-start mb-2">
-                      <CardTitle className="text-2xl">{activity.title}</CardTitle>
-                      {activity.is_participant && (
-                        <Badge className="bg-primary">Ingeschreven</Badge>
-                      )}
-                    </div>
+                    <CardTitle className="text-2xl">{activity.title}</CardTitle>
                     <CardDescription className="text-base">
                       {activity.description}
                     </CardDescription>
@@ -214,37 +246,86 @@ const Activiteiten = () => {
                         <Users className="w-4 h-4 mr-2" />
                         {activity.participant_count} {activity.max_participants && `/ ${activity.max_participants}`} deelnemers
                       </div>
-                      {activity.review_count > 0 && (
+                      <div className="flex gap-2 text-sm">
+                        <Badge variant="outline">
+                          {activity.ouderen_count} ouderen {activity.max_ouderen && `/ ${activity.max_ouderen}`}
+                        </Badge>
+                        <Badge variant="outline">
+                          {activity.jongeren_count} jongeren {activity.max_jongeren && `/ ${activity.max_jongeren}`}
+                        </Badge>
+                      </div>
+                      {activity.review_count! > 0 && (
                         <div className="flex items-center text-muted-foreground">
                           <Star className="w-4 h-4 mr-2 fill-primary text-primary" />
-                          {activity.average_rating.toFixed(1)} ({activity.review_count} {activity.review_count === 1 ? 'recensie' : 'recensies'})
+                          {activity.average_rating!.toFixed(1)} ({activity.review_count} {activity.review_count === 1 ? 'recensie' : 'recensies'})
                         </div>
                       )}
                     </div>
 
-                    {activity.is_participant ? (
-                      <Button
-                        variant="outline"
-                        className="w-full rounded-xl"
-                        onClick={() => handleLeaveActivity(activity.id)}
-                      >
-                        Uitschrijven
-                      </Button>
-                    ) : (
-                      <Button
-                        className="w-full rounded-xl"
-                        onClick={() => handleJoinActivity(activity.id)}
-                        disabled={
-                          activity.max_participants !== null &&
-                          activity.participant_count >= activity.max_participants
-                        }
-                      >
-                        {activity.max_participants !== null &&
-                        activity.participant_count >= activity.max_participants
-                          ? 'Vol'
-                          : 'Inschrijven'}
-                      </Button>
-                    )}
+                    <Dialog open={dialogOpen && selectedActivity?.id === activity.id} onOpenChange={(open) => {
+                      if (!open) setDialogOpen(false);
+                    }}>
+                      <DialogTrigger asChild>
+                        <Button
+                          className="w-full rounded-xl"
+                          onClick={() => openJoinDialog(activity)}
+                          disabled={isFull(activity)}
+                        >
+                          {isFull(activity) ? 'Vol' : 'Inschrijven'}
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Inschrijven voor {activity.title}</DialogTitle>
+                          <DialogDescription>
+                            Vul je gegevens in om deel te nemen aan deze activiteit.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4 pt-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="participant-name">Je naam</Label>
+                            <Input
+                              id="participant-name"
+                              placeholder="Vul je naam in"
+                              value={participantForm.name}
+                              onChange={(e) => setParticipantForm({ ...participantForm, name: e.target.value })}
+                              maxLength={100}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="participant-type">Ik ben</Label>
+                            <Select
+                              value={participantForm.type}
+                              onValueChange={(value: 'ouderen' | 'jongeren') =>
+                                setParticipantForm({ ...participantForm, type: value })
+                              }
+                            >
+                              <SelectTrigger id="participant-type">
+                                <SelectValue placeholder="Selecteer..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="ouderen">Ouderen</SelectItem>
+                                <SelectItem value="jongeren">Jongeren</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <Button
+                            className="w-full"
+                            onClick={handleJoinActivity}
+                            disabled={joiningActivity === activity.id}
+                          >
+                            {joiningActivity === activity.id ? (
+                              <>
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                Bezig...
+                              </>
+                            ) : (
+                              'Bevestig Inschrijving'
+                            )}
+                          </Button>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
                   </CardContent>
                 </Card>
               ))}

@@ -72,19 +72,25 @@ export type Database = {
           activity_id: string
           id: string
           joined_at: string
-          user_id: string
+          participant_name: string | null
+          participant_type: string | null
+          user_id: string | null
         }
         Insert: {
           activity_id: string
           id?: string
           joined_at?: string
-          user_id: string
+          participant_name?: string | null
+          participant_type?: string | null
+          user_id?: string | null
         }
         Update: {
           activity_id?: string
           id?: string
           joined_at?: string
-          user_id?: string
+          participant_name?: string | null
+          participant_type?: string | null
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -151,7 +157,9 @@ export type Database = {
           description: string
           id: string
           image_url: string | null
-          suggested_by: string
+          suggested_by: string | null
+          suggester_name: string | null
+          suggester_type: string | null
           title: string
         }
         Insert: {
@@ -159,7 +167,9 @@ export type Database = {
           description: string
           id?: string
           image_url?: string | null
-          suggested_by: string
+          suggested_by?: string | null
+          suggester_name?: string | null
+          suggester_type?: string | null
           title: string
         }
         Update: {
@@ -167,7 +177,9 @@ export type Database = {
           description?: string
           id?: string
           image_url?: string | null
-          suggested_by?: string
+          suggested_by?: string | null
+          suggester_name?: string | null
+          suggester_type?: string | null
           title?: string
         }
         Relationships: [
