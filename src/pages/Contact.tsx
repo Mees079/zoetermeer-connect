@@ -2,10 +2,8 @@ import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Mail, Phone, MapPin, Clock } from 'lucide-react';
-
 const Contact = () => {
-  return (
-    <div className="min-h-screen bg-background">
+  return <div className="min-h-screen bg-background">
       <Navbar />
       
       <main className="container mx-auto px-4 pt-24 pb-16">
@@ -59,8 +57,11 @@ const Contact = () => {
                 <CardDescription>Bezoek ons op:</CardDescription>
               </CardHeader>
               <CardContent>
-                <address className="not-italic text-foreground/80">
-                  ONC Parkdreef<br />
+                <address className="not-italic text-foreground/80">AJOS 
+Seghwaert 
+Zoetermeer
+Nederland
+                <br />
                   Zoetermeer<br />
                   Nederland
                 </address>
@@ -84,7 +85,7 @@ const Contact = () => {
 
           <Card className="glass-card">
             <CardHeader>
-              <CardTitle>Over ONC Parkdreef</CardTitle>
+              <CardTitle>Over AJOS activiteiten jongeren ouderen seghwaert </CardTitle>
             </CardHeader>
             <CardContent className="prose prose-sm max-w-none">
               <p className="text-foreground/80">
@@ -104,8 +105,6 @@ const Contact = () => {
       </main>
 
       <Footer />
-    </div>
-  );
+    </div>;
 };
-
 export default Contact;
