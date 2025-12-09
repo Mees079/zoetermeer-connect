@@ -59,13 +59,13 @@ export const HexagonBackground = () => {
       }
       
       ctx.closePath();
-      ctx.strokeStyle = `rgba(76, 175, 80, ${hex.opacity})`;
+      ctx.strokeStyle = `rgba(59, 130, 246, ${hex.opacity})`;
       ctx.lineWidth = 2;
       ctx.stroke();
       
       const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, hex.size);
-      gradient.addColorStop(0, `rgba(76, 175, 80, ${hex.opacity * 0.2})`);
-      gradient.addColorStop(1, 'rgba(76, 175, 80, 0)');
+      gradient.addColorStop(0, `rgba(59, 130, 246, ${hex.opacity * 0.2})`);
+      gradient.addColorStop(1, 'rgba(59, 130, 246, 0)');
       ctx.fillStyle = gradient;
       ctx.fill();
       
