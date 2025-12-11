@@ -118,6 +118,10 @@ export const Navbar = () => {
                 </Link>
               ))}
               
+              <div className="px-3 py-2">
+                <SettingsMenu />
+              </div>
+              
               {user ? (
                 <SoundButton
                   onClick={() => {
