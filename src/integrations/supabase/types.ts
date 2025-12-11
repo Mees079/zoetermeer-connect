@@ -20,6 +20,7 @@ export type Database = {
           created_by: string
           date: string
           description: string
+          end_date: string | null
           id: string
           image_url: string | null
           location: string
@@ -34,6 +35,7 @@ export type Database = {
           created_by: string
           date: string
           description: string
+          end_date?: string | null
           id?: string
           image_url?: string | null
           location: string
@@ -48,6 +50,7 @@ export type Database = {
           created_by?: string
           date?: string
           description?: string
+          end_date?: string | null
           id?: string
           image_url?: string | null
           location?: string
@@ -115,24 +118,33 @@ export type Database = {
           comment: string | null
           created_at: string
           id: string
+          photo_url: string | null
           rating: number
-          user_id: string
+          reviewer_email: string | null
+          reviewer_name: string | null
+          user_id: string | null
         }
         Insert: {
           activity_id: string
           comment?: string | null
           created_at?: string
           id?: string
+          photo_url?: string | null
           rating: number
-          user_id: string
+          reviewer_email?: string | null
+          reviewer_name?: string | null
+          user_id?: string | null
         }
         Update: {
           activity_id?: string
           comment?: string | null
           created_at?: string
           id?: string
+          photo_url?: string | null
           rating?: number
-          user_id?: string
+          reviewer_email?: string | null
+          reviewer_name?: string | null
+          user_id?: string | null
         }
         Relationships: [
           {
