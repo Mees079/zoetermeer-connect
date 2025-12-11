@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Menu, X, Settings, LogOut } from 'lucide-react';
+import { Menu, X, LogOut } from 'lucide-react';
 import { SoundButton } from '@/components/SoundButton';
+import { SettingsMenu } from '@/components/SettingsMenu';
 import logo from '@/assets/logo.png';
 
 export const Navbar = () => {
@@ -16,6 +17,7 @@ export const Navbar = () => {
   const publicLinks = [
     { to: '/', label: 'Home' },
     { to: '/activiteiten', label: 'Activiteiten' },
+    { to: '/reviews', label: 'Recensies' },
     { to: '/suggesties', label: 'Suggesties' },
     { to: '/contact', label: 'Contact' },
   ];
@@ -58,6 +60,8 @@ export const Navbar = () => {
                 {link.label}
               </Link>
             ))}
+            
+            <SettingsMenu />
             
             {user ? (
               <SoundButton

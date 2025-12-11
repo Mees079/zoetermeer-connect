@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Calendar, MapPin, Users, Loader2, Clock, Star } from 'lucide-react';
+import { Calendar, MapPin, Users, Loader2, Clock, Star, Play, CheckCircle, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { nl } from 'date-fns/locale';
 import { z } from 'zod';
@@ -27,6 +27,7 @@ interface Activity {
   description: string;
   location: string;
   date: string;
+  end_date: string | null;
   max_participants: number | null;
   max_ouderen: number | null;
   max_jongeren: number | null;
@@ -59,10 +60,10 @@ const Activiteiten = () => {
 
   const fetchActivities = async () => {
     try {
+      // Fetch all activities (not just future ones)
       const { data: activitiesData, error: activitiesError } = await supabase
         .from('activities')
         .select('*')
-        .gte('date', new Date().toISOString())
         .order('date', { ascending: true });
 
       if (activitiesError) throw activitiesError;
@@ -179,6 +180,38 @@ const Activiteiten = () => {
     return false;
   };
 
+  const getActivityStatus = (activity: Activity) => {
+    const now = new Date();
+    const startDate = new Date(activity.date);
+    const endDate = activity.end_date ? new Date(activity.end_date) : null;
+
+    if (endDate && now > endDate) {
+      return 'finished';
+    }
+    if (now >= startDate && (!endDate || now <= endDate)) {
+      return 'active';
+    }
+    return 'upcoming';
+  };
+
+  const handleDeleteActivity = async (activityId: string) => {
+    if (!confirm('Weet je zeker dat je deze activiteit wilt verwijderen?')) return;
+    
+    try {
+      const { error } = await supabase
+        .from('activities')
+        .delete()
+        .eq('id', activityId);
+      
+      if (error) throw error;
+      toast.success('Activiteit verwijderd');
+      fetchActivities();
+    } catch (error) {
+      console.error('Error deleting activity:', error);
+      toast.error('Fout bij het verwijderen');
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -215,8 +248,26 @@ const Activiteiten = () => {
             </Card>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {activities.map((activity) => (
-                <Card key={activity.id} className="glass-card hover-lift overflow-hidden">
+              {activities.map((activity) => {
+                const status = getActivityStatus(activity);
+                return (
+                <Card key={activity.id} className="glass-card hover-lift overflow-hidden relative">
+                  {/* Status Badge */}
+                  <div className="absolute top-4 right-4 z-10">
+                    {status === 'active' && (
+                      <Badge className="bg-green-500 text-white animate-pulse">
+                        <Play className="w-3 h-3 mr-1" />
+                        Bezig
+                      </Badge>
+                    )}
+                    {status === 'finished' && (
+                      <Badge variant="secondary">
+                        <CheckCircle className="w-3 h-3 mr-1" />
+                        Afgelopen
+                      </Badge>
+                    )}
+                  </div>
+
                   {activity.image_url && (
                     <div className="h-48 bg-gradient-to-br from-primary/20 to-secondary/20 overflow-hidden">
                       <img
@@ -227,17 +278,37 @@ const Activiteiten = () => {
                     </div>
                   )}
                   <CardHeader>
-                    <CardTitle className="text-2xl">{activity.title}</CardTitle>
-                    <CardDescription className="text-base">
-                      {activity.description}
-                    </CardDescription>
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <CardTitle className="text-2xl">{activity.title}</CardTitle>
+                        <CardDescription className="text-base">
+                          {activity.description}
+                        </CardDescription>
+                      </div>
+                      {isVrijwilliger && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-destructive hover:bg-destructive/10"
+                          onClick={() => handleDeleteActivity(activity.id)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="space-y-2">
                       <div className="flex items-center text-muted-foreground">
                         <Clock className="w-4 h-4 mr-2" />
-                        {format(new Date(activity.date), 'EEEE d MMMM yyyy, HH:mm', { locale: nl })}
+                        <span>Start: {format(new Date(activity.date), 'EEEE d MMMM yyyy, HH:mm', { locale: nl })}</span>
                       </div>
+                      {activity.end_date && (
+                        <div className="flex items-center text-muted-foreground">
+                          <Clock className="w-4 h-4 mr-2" />
+                          <span>Eind: {format(new Date(activity.end_date), 'EEEE d MMMM yyyy, HH:mm', { locale: nl })}</span>
+                        </div>
+                      )}
                       <div className="flex items-center text-muted-foreground">
                         <MapPin className="w-4 h-4 mr-2" />
                         {activity.location}
@@ -262,18 +333,19 @@ const Activiteiten = () => {
                       )}
                     </div>
 
-                    <Dialog open={dialogOpen && selectedActivity?.id === activity.id} onOpenChange={(open) => {
-                      if (!open) setDialogOpen(false);
-                    }}>
-                      <DialogTrigger asChild>
-                        <Button
-                          className="w-full rounded-xl"
-                          onClick={() => openJoinDialog(activity)}
-                          disabled={isFull(activity)}
-                        >
-                          {isFull(activity) ? 'Vol' : 'Inschrijven'}
-                        </Button>
-                      </DialogTrigger>
+                    {status !== 'finished' && (
+                      <Dialog open={dialogOpen && selectedActivity?.id === activity.id} onOpenChange={(open) => {
+                        if (!open) setDialogOpen(false);
+                      }}>
+                        <DialogTrigger asChild>
+                          <Button
+                            className="w-full rounded-xl"
+                            onClick={() => openJoinDialog(activity)}
+                            disabled={isFull(activity) || status === 'active'}
+                          >
+                            {status === 'active' ? 'Activiteit Bezig' : isFull(activity) ? 'Vol' : 'Inschrijven'}
+                          </Button>
+                        </DialogTrigger>
                       <DialogContent>
                         <DialogHeader>
                           <DialogTitle>Inschrijven voor {activity.title}</DialogTitle>
@@ -326,9 +398,10 @@ const Activiteiten = () => {
                         </div>
                       </DialogContent>
                     </Dialog>
+                    )}
                   </CardContent>
                 </Card>
-              ))}
+              )})}
             </div>
           )}
         </div>

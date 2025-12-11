@@ -23,6 +23,7 @@ const NieuweActiviteit = () => {
     description: '',
     location: '',
     date: '',
+    end_date: '',
     max_participants: '',
     max_ouderen: '',
     max_jongeren: '',
@@ -46,6 +47,7 @@ const NieuweActiviteit = () => {
           description: formData.description,
           location: formData.location,
           date: new Date(formData.date).toISOString(),
+          end_date: formData.end_date ? new Date(formData.end_date).toISOString() : null,
           max_participants: formData.max_participants ? parseInt(formData.max_participants) : null,
           max_ouderen: formData.max_ouderen ? parseInt(formData.max_ouderen) : null,
           max_jongeren: formData.max_jongeren ? parseInt(formData.max_jongeren) : null,
@@ -135,7 +137,7 @@ const NieuweActiviteit = () => {
                   <div className="space-y-2">
                     <Label htmlFor="date" className="flex items-center gap-2">
                       <Calendar className="w-4 h-4" />
-                      Datum & Tijd *
+                      Start Datum & Tijd *
                     </Label>
                     <Input
                       id="date"
@@ -145,6 +147,22 @@ const NieuweActiviteit = () => {
                       required
                     />
                   </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="end_date" className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4" />
+                    Eind Datum & Tijd (optioneel)
+                  </Label>
+                  <Input
+                    id="end_date"
+                    type="datetime-local"
+                    value={formData.end_date}
+                    onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Als je dit invult, wordt de activiteit als "bezig" getoond tussen start en eind
+                  </p>
                 </div>
 
                 <div className="space-y-4">
