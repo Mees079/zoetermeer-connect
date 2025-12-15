@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Menu, X, LogOut } from 'lucide-react';
+import { Menu, X, LogOut, Settings } from 'lucide-react';
 import { SoundButton } from '@/components/SoundButton';
-import { SettingsMenu } from '@/components/SettingsMenu';
+import { Button } from '@/components/ui/button';
 import logo from '@/assets/logo.png';
 
 export const Navbar = () => {
@@ -61,7 +61,11 @@ export const Navbar = () => {
               </Link>
             ))}
             
-            <SettingsMenu />
+            <Link to="/instellingen">
+              <Button variant="ghost" size="icon" className="rounded-full">
+                <Settings className="w-5 h-5" />
+              </Button>
+            </Link>
             
             {user ? (
               <SoundButton
@@ -118,9 +122,18 @@ export const Navbar = () => {
                 </Link>
               ))}
               
-              <div className="px-3 py-2">
-                <SettingsMenu />
-              </div>
+              <Link
+                to="/instellingen"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`px-3 py-2 rounded-lg transition-colors flex items-center gap-2 ${
+                  isActive('/instellingen')
+                    ? 'bg-primary text-primary-foreground font-semibold'
+                    : 'text-foreground hover:bg-accent'
+                }`}
+              >
+                <Settings className="w-4 h-4" />
+                Instellingen
+              </Link>
               
               {user ? (
                 <SoundButton

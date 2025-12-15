@@ -13,6 +13,7 @@ import AdminPanel from "./pages/AdminPanel";
 import Suggesties from "./pages/Suggesties";
 import Contact from "./pages/Contact";
 import Reviews from "./pages/Reviews";
+import Instellingen from "./pages/Instellingen";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -34,6 +35,7 @@ const App = () => (
             <Route path="/suggesties" element={<Suggesties />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/reviews" element={<Reviews />} />
+            <Route path="/instellingen" element={<Instellingen />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
