@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Calendar, MapPin, Users, Loader2, Clock, Star, Play, CheckCircle, Trash2 } from 'lucide-react';
+import { Calendar, MapPin, Users, Loader2, Clock, Star, Play, CheckCircle, Trash2, Mail } from 'lucide-react';
 import { format } from 'date-fns';
 import { nl } from 'date-fns/locale';
 import { z } from 'zod';
@@ -19,6 +19,7 @@ import { z } from 'zod';
 const participantSchema = z.object({
   name: z.string().trim().min(2, 'Naam moet minimaal 2 tekens zijn').max(100),
   type: z.enum(['ouderen', 'jongeren'], { required_error: 'Selecteer of je ouderen of jongeren bent' }),
+  email: z.string().email('Ongeldig e-mailadres').optional().or(z.literal('')),
 });
 
 interface Activity {
@@ -50,6 +51,7 @@ const Activiteiten = () => {
   const [participantForm, setParticipantForm] = useState({
     name: '',
     type: '' as 'ouderen' | 'jongeren' | '',
+    email: '',
   });
 
   const isVrijwilliger = user && hasRole('vrijwilliger');
@@ -60,7 +62,6 @@ const Activiteiten = () => {
 
   const fetchActivities = async () => {
     try {
-      // Fetch all activities (not just future ones)
       const { data: activitiesData, error: activitiesError } = await supabase
         .from('activities')
         .select('*')
@@ -75,7 +76,6 @@ const Activiteiten = () => {
             .select('*', { count: 'exact', head: true })
             .eq('activity_id', activity.id);
 
-          // Count by type
           const { count: ouderenCount } = await supabase
             .from('activity_participants')
             .select('*', { count: 'exact', head: true })
@@ -119,7 +119,7 @@ const Activiteiten = () => {
 
   const openJoinDialog = (activity: Activity) => {
     setSelectedActivity(activity);
-    setParticipantForm({ name: '', type: '' });
+    setParticipantForm({ name: '', type: '', email: '' });
     setDialogOpen(true);
   };
 
@@ -130,6 +130,7 @@ const Activiteiten = () => {
       const validatedData = participantSchema.parse({
         name: participantForm.name.trim(),
         type: participantForm.type,
+        email: participantForm.email.trim() || undefined,
       });
 
       // Check if max for this type is reached
@@ -154,11 +155,34 @@ const Activiteiten = () => {
           activity_id: selectedActivity.id,
           participant_name: validatedData.name,
           participant_type: validatedData.type,
+          participant_email: validatedData.email || null,
         });
 
       if (error) throw error;
 
-      toast.success('Je bent ingeschreven voor ' + selectedActivity.title + '!');
+      // Send confirmation email if email was provided
+      if (validatedData.email) {
+        try {
+          await supabase.functions.invoke('send-registration-email', {
+            body: {
+              participantName: validatedData.name,
+              participantEmail: validatedData.email,
+              activityTitle: selectedActivity.title,
+              activityDescription: selectedActivity.description,
+              activityLocation: selectedActivity.location,
+              activityDate: selectedActivity.date,
+              activityEndDate: selectedActivity.end_date,
+            }
+          });
+          toast.success('Je bent ingeschreven! Check je e-mail voor de bevestiging met agenda-uitnodiging.');
+        } catch (emailError) {
+          console.error('Error sending email:', emailError);
+          toast.success('Je bent ingeschreven voor ' + selectedActivity.title + '!');
+        }
+      } else {
+        toast.success('Je bent ingeschreven voor ' + selectedActivity.title + '!');
+      }
+
       setDialogOpen(false);
       fetchActivities();
     } catch (error) {
@@ -355,7 +379,7 @@ const Activiteiten = () => {
                         </DialogHeader>
                         <div className="space-y-4 pt-4">
                           <div className="space-y-2">
-                            <Label htmlFor="participant-name">Je naam</Label>
+                            <Label htmlFor="participant-name">Je naam *</Label>
                             <Input
                               id="participant-name"
                               placeholder="Vul je naam in"
@@ -365,7 +389,7 @@ const Activiteiten = () => {
                             />
                           </div>
                           <div className="space-y-2">
-                            <Label htmlFor="participant-type">Ik ben</Label>
+                            <Label htmlFor="participant-type">Ik ben *</Label>
                             <Select
                               value={participantForm.type}
                               onValueChange={(value: 'ouderen' | 'jongeren') =>
@@ -380,6 +404,23 @@ const Activiteiten = () => {
                                 <SelectItem value="jongeren">Jongeren</SelectItem>
                               </SelectContent>
                             </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="participant-email" className="flex items-center gap-2">
+                              <Mail className="w-4 h-4" />
+                              E-mailadres (optioneel)
+                            </Label>
+                            <Input
+                              id="participant-email"
+                              type="email"
+                              placeholder="je@email.nl"
+                              value={participantForm.email}
+                              onChange={(e) => setParticipantForm({ ...participantForm, email: e.target.value })}
+                              maxLength={255}
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              Ontvang een bevestiging met agenda-uitnodiging, herinnering en de mogelijkheid om een review achter te laten.
+                            </p>
                           </div>
                           <Button
                             className="w-full"

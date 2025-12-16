@@ -75,24 +75,33 @@ export type Database = {
           activity_id: string
           id: string
           joined_at: string
+          participant_email: string | null
           participant_name: string | null
           participant_type: string | null
+          reminder_sent: boolean | null
+          review_request_sent: boolean | null
           user_id: string | null
         }
         Insert: {
           activity_id: string
           id?: string
           joined_at?: string
+          participant_email?: string | null
           participant_name?: string | null
           participant_type?: string | null
+          reminder_sent?: boolean | null
+          review_request_sent?: boolean | null
           user_id?: string | null
         }
         Update: {
           activity_id?: string
           id?: string
           joined_at?: string
+          participant_email?: string | null
           participant_name?: string | null
           participant_type?: string | null
+          reminder_sent?: boolean | null
+          review_request_sent?: boolean | null
           user_id?: string | null
         }
         Relationships: [
