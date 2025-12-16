@@ -2,3 +2,12 @@ project_id = "ograimzspojayxmmrypy"
 
 [functions.send-contact-email]
 verify_jwt = false
+
+[functions.send-registration-email]
+verify_jwt = false
+
+[functions.send-reminder-emails]
+verify_jwt = false
+
+[functions.send-review-request-emails]
+verify_jwt = false
