@@ -9,9 +9,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Star, Loader2, User, Plus } from 'lucide-react';
+import { Star, Loader2, User, Plus, Trash2, ImageOff } from 'lucide-react';
 import { format } from 'date-fns';
 import { nl } from 'date-fns/locale';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Review {
   id: string;
@@ -25,11 +26,15 @@ interface Review {
 }
 
 const Reviews = () => {
+  const { hasRole } = useAuth();
+  const isVrijwilliger = hasRole('vrijwilliger') || hasRole('admin');
+  
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [activities, setActivities] = useState<{ id: string; title: string }[]>([]);
+  const [photoPreviewError, setPhotoPreviewError] = useState(false);
   
   const [reviewForm, setReviewForm] = useState({
     activity_id: '',
@@ -117,6 +122,7 @@ const Reviews = () => {
       toast.error('Fout bij het plaatsen van je recensie');
     } finally {
       setSubmitting(false);
+      setPhotoPreviewError(false);
     }
   };
 
@@ -232,12 +238,34 @@ const Reviews = () => {
                     <Input
                       id="photo_url"
                       value={reviewForm.photo_url}
-                      onChange={(e) => setReviewForm({ ...reviewForm, photo_url: e.target.value })}
+                      onChange={(e) => {
+                        setReviewForm({ ...reviewForm, photo_url: e.target.value });
+                        setPhotoPreviewError(false);
+                      }}
                       placeholder="https://..."
                     />
                     <p className="text-xs text-muted-foreground">
                       Link naar een profielfoto
                     </p>
+                    {reviewForm.photo_url && (
+                      <div className="mt-2">
+                        {photoPreviewError ? (
+                          <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center">
+                            <ImageOff className="w-6 h-6 text-destructive" />
+                          </div>
+                        ) : (
+                          <img
+                            src={reviewForm.photo_url}
+                            alt="Preview"
+                            className="w-16 h-16 rounded-full object-cover border-2 border-primary/20"
+                            onError={() => setPhotoPreviewError(true)}
+                          />
+                        )}
+                        <p className={`text-xs mt-1 ${photoPreviewError ? 'text-destructive' : 'text-green-600'}`}>
+                          {photoPreviewError ? 'Foto kon niet geladen worden' : 'Foto preview'}
+                        </p>
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-2">
@@ -311,7 +339,31 @@ const Reviews = () => {
                             )}
                           </div>
                           <div className="flex flex-col items-end gap-1">
-                            {renderStars(review.rating)}
+                            <div className="flex items-center gap-2">
+                              {renderStars(review.rating)}
+                              {isVrijwilliger && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                  onClick={async () => {
+                                    if (!confirm('Weet je zeker dat je deze recensie wilt verwijderen?')) return;
+                                    const { error } = await supabase
+                                      .from('activity_reviews')
+                                      .delete()
+                                      .eq('id', review.id);
+                                    if (error) {
+                                      toast.error('Fout bij verwijderen');
+                                    } else {
+                                      toast.success('Recensie verwijderd');
+                                      fetchReviews();
+                                    }
+                                  }}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              )}
+                            </div>
                             <span className="text-xs text-muted-foreground">
                               {format(new Date(review.created_at), 'd MMM yyyy', { locale: nl })}
                             </span>
