@@ -177,7 +177,7 @@ const Contact = () => {
               <CardTitle>Over AJOS activiteiten jongeren ouderen seghwaert</CardTitle>
             </CardHeader>
             <CardContent className="prose prose-sm max-w-none">
-              <p className="text-foreground/80 font-mono text-lg">AJOS Activiteiten Jongeren & Ouderen Seghwaert is een organisatie die zich inzet tegen eenzaamheid en het versterken van de band tussen jongeren en ouderen. Met deze activiteiten hopen wij van Seghwaert een hechtere en betere wijk te maken.
+              <p className="text-foreground/80 font-mono text-base">AJOS Activiteiten Jongeren & Ouderen Seghwaert is een organisatie die zich inzet tegen eenzaamheid en het versterken van de band tussen jongeren en ouderen. Met deze activiteiten hopen wij van Seghwaert een hechtere en betere wijk te maken.
 
 
             </p>
