@@ -10,37 +10,40 @@ import { Mail, Phone, MapPin, Clock, Send, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { z } from 'zod';
-
 const contactSchema = z.object({
   name: z.string().trim().min(1, "Naam is verplicht").max(100, "Naam mag maximaal 100 tekens zijn"),
   email: z.string().trim().email("Ongeldig e-mailadres").max(255, "E-mail mag maximaal 255 tekens zijn"),
   message: z.string().trim().min(1, "Bericht is verplicht").max(2000, "Bericht mag maximaal 2000 tekens zijn")
 });
-
 const Contact = () => {
-  const [formData, setFormData] = useState({ name: '', email: '', message: '' });
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    message: ''
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     const validation = contactSchema.safeParse(formData);
     if (!validation.success) {
       toast.error(validation.error.errors[0].message);
       return;
     }
-
     setIsSubmitting(true);
-    
     try {
-      const { data, error } = await supabase.functions.invoke('send-contact-email', {
+      const {
+        data,
+        error
+      } = await supabase.functions.invoke('send-contact-email', {
         body: formData
       });
-
       if (error) throw error;
-
       toast.success('Bericht verzonden! Je ontvangt een bevestiging per e-mail.');
-      setFormData({ name: '', email: '', message: '' });
+      setFormData({
+        name: '',
+        email: '',
+        message: ''
+      });
     } catch (error: any) {
       console.error('Error sending email:', error);
       toast.error('Er ging iets mis. Probeer het later opnieuw.');
@@ -48,9 +51,7 @@ const Contact = () => {
       setIsSubmitting(false);
     }
   };
-
-  return (
-    <div className="min-h-screen bg-background">
+  return <div className="min-h-screen bg-background">
       <Navbar />
       
       <main className="container mx-auto px-4 pt-24 pb-16">
@@ -75,49 +76,34 @@ const Contact = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="name">Naam</Label>
-                    <Input
-                      id="name"
-                      placeholder="Je naam"
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      disabled={isSubmitting}
-                    />
+                    <Input id="name" placeholder="Je naam" value={formData.name} onChange={e => setFormData({
+                    ...formData,
+                    name: e.target.value
+                  })} disabled={isSubmitting} />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="email">E-mail</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="je@email.nl"
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      disabled={isSubmitting}
-                    />
+                    <Input id="email" type="email" placeholder="je@email.nl" value={formData.email} onChange={e => setFormData({
+                    ...formData,
+                    email: e.target.value
+                  })} disabled={isSubmitting} />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="message">Bericht</Label>
-                  <Textarea
-                    id="message"
-                    placeholder="Schrijf hier je bericht..."
-                    rows={5}
-                    value={formData.message}
-                    onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                    disabled={isSubmitting}
-                  />
+                  <Textarea id="message" placeholder="Schrijf hier je bericht..." rows={5} value={formData.message} onChange={e => setFormData({
+                  ...formData,
+                  message: e.target.value
+                })} disabled={isSubmitting} />
                 </div>
                 <Button type="submit" disabled={isSubmitting} className="w-full md:w-auto">
-                  {isSubmitting ? (
-                    <>
+                  {isSubmitting ? <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Verzenden...
-                    </>
-                  ) : (
-                    <>
+                    </> : <>
                       <Send className="mr-2 h-4 w-4" />
                       Verstuur bericht
-                    </>
-                  )}
+                    </>}
                 </Button>
               </form>
             </CardContent>
@@ -191,12 +177,10 @@ const Contact = () => {
               <CardTitle>Over AJOS activiteiten jongeren ouderen seghwaert</CardTitle>
             </CardHeader>
             <CardContent className="prose prose-sm max-w-none">
-              <p className="text-foreground/80">
-                ONC Parkdreef is een gemeenschapscentrum in Zoetermeer dat zich inzet voor het verbinden 
-                van generaties. Ons doel is om een warme, inclusieve omgeving te creëren waar ouderen en 
-                jongeren elkaar kunnen ontmoeten, van elkaar kunnen leren en samen mooie herinneringen 
-                kunnen maken.
-              </p>
+              <p className="text-foreground/80 font-mono text-lg">AJOS Activiteiten Jongeren & Ouderen Seghwaert is een organisatie die zich inzet tegen eenzaamheid en het versterken van de band tussen jongeren en ouderen. Met deze activiteiten hopen wij van Seghwaert een hechtere en betere wijk te maken.
+
+
+            </p>
               <p className="text-foreground/80 mt-4">
                 Door diverse activiteiten en evenementen organiseren we ontmoetingen die betekenisvol zijn 
                 voor beide generaties. Van sportieve activiteiten tot culturele evenementen, er is voor elk 
@@ -208,8 +192,6 @@ const Contact = () => {
       </main>
 
       <Footer />
-    </div>
-  );
+    </div>;
 };
-
 export default Contact;
