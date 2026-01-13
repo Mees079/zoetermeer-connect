@@ -1,3 +1,4 @@
+# AJOS - Activiteiten Jongeren Ouderen Seghwaert
 User-agent: Googlebot
 Allow: /
 
@@ -12,3 +13,6 @@ Allow: /
 
 User-agent: *
 Allow: /
+
+# Sitemap
+Sitemap: https://ajos.lovable.app/sitemap.xml
