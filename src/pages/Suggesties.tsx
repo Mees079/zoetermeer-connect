@@ -31,6 +31,7 @@ interface Suggestion {
   suggested_by: string | null;
   suggester_name: string | null;
   suggester_type: string | null;
+  suggester_email: string | null;
   profiles?: {
     full_name: string | null;
   };
@@ -50,6 +51,7 @@ const Suggesties = () => {
     description: '',
     suggesterName: '',
     suggesterType: '' as 'ouderen' | 'jongeren' | '',
+    suggesterEmail: '',
   });
 
   const isVrijwilliger = user && hasRole('vrijwilliger');
@@ -159,6 +161,7 @@ const Suggesties = () => {
             description: validatedData.description,
             suggester_name: validatedData.suggesterName,
             suggester_type: validatedData.suggesterType,
+            suggester_email: formData.suggesterEmail.trim() || null,
             ...(imageUrl && { image_url: imageUrl }),
           });
 
@@ -166,7 +169,7 @@ const Suggesties = () => {
         toast.success('Suggestie ingediend!');
       }
 
-      setFormData({ title: '', description: '', suggesterName: '', suggesterType: '' });
+      setFormData({ title: '', description: '', suggesterName: '', suggesterType: '', suggesterEmail: '' });
       setImageFile(null);
       setImagePreview(null);
       fetchSuggestions();
@@ -189,6 +192,7 @@ const Suggesties = () => {
       description: suggestion.description,
       suggesterName: suggestion.suggester_name || '',
       suggesterType: (suggestion.suggester_type as 'ouderen' | 'jongeren') || '',
+      suggesterEmail: suggestion.suggester_email || '',
     });
     if (suggestion.image_url) {
       setImagePreview(suggestion.image_url);
@@ -215,7 +219,7 @@ const Suggesties = () => {
 
   const cancelEdit = () => {
     setEditingId(null);
-    setFormData({ title: '', description: '', suggesterName: '', suggesterType: '' });
+    setFormData({ title: '', description: '', suggesterName: '', suggesterType: '', suggesterEmail: '' });
     setImageFile(null);
     setImagePreview(null);
   };
@@ -228,6 +232,10 @@ const Suggesties = () => {
       return suggestion.profiles.full_name;
     }
     return 'Anoniem';
+  };
+
+  const getSuggesterEmail = (suggestion: Suggestion) => {
+    return suggestion.suggester_email;
   };
 
   if (loading) {
@@ -297,6 +305,17 @@ const Suggesties = () => {
                           </SelectContent>
                         </Select>
                       </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="suggesterEmail">E-mailadres (optioneel)</Label>
+                      <Input
+                        id="suggesterEmail"
+                        type="email"
+                        value={formData.suggesterEmail}
+                        onChange={(e) => setFormData({ ...formData, suggesterEmail: e.target.value })}
+                        placeholder="je@email.nl"
+                        maxLength={100}
+                      />
                     </div>
                   </>
                 )}
@@ -416,6 +435,9 @@ const Suggesties = () => {
                         <CardDescription>
                           Door {getSuggesterDisplay(suggestion)} •{' '}
                           {format(new Date(suggestion.created_at), 'd MMMM yyyy', { locale: nl })}
+                          {isVrijwilliger && getSuggesterEmail(suggestion) && (
+                            <span className="block mt-1">✉️ {getSuggesterEmail(suggestion)}</span>
+                          )}
                         </CardDescription>
                       </div>
                       {isVrijwilliger && (

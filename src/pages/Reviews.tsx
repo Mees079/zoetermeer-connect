@@ -332,6 +332,11 @@ const Reviews = () => {
                             <h3 className="font-semibold">
                               {review.reviewer_name || 'Anoniem'}
                             </h3>
+                            {isVrijwilliger && review.reviewer_email && (
+                              <p className="text-sm text-muted-foreground">
+                                ✉️ {review.reviewer_email}
+                              </p>
+                            )}
                             {review.activity_title && (
                               <p className="text-sm text-muted-foreground">
                                 Over: {review.activity_title}

@@ -179,6 +179,7 @@ export type Database = {
           id: string
           image_url: string | null
           suggested_by: string | null
+          suggester_email: string | null
           suggester_name: string | null
           suggester_type: string | null
           title: string
@@ -189,6 +190,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           suggested_by?: string | null
+          suggester_email?: string | null
           suggester_name?: string | null
           suggester_type?: string | null
           title: string
@@ -199,6 +201,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           suggested_by?: string | null
+          suggester_email?: string | null
           suggester_name?: string | null
           suggester_type?: string | null
           title?: string
