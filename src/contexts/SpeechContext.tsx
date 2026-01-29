@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode, useRef } from 'react';
 
 export type ReadingMode = 'sentence' | 'word';
 
@@ -16,11 +16,12 @@ interface SpeechContextType {
   voices: SpeechSynthesisVoice[];
   isSpeaking: boolean;
   isPaused: boolean;
-  speak: (text: string) => void;
+  currentWord: string;
+  currentWordIndex: number;
+  speak: (text: string, element?: HTMLElement) => void;
   pause: () => void;
   resume: () => void;
   stop: () => void;
-  speakElement: (element: HTMLElement) => void;
   isControlsOpen: boolean;
   setIsControlsOpen: (open: boolean) => void;
 }
@@ -52,7 +53,12 @@ export const SpeechProvider = ({ children }: { children: ReactNode }) => {
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  const [currentWord, setCurrentWord] = useState('');
+  const [currentWordIndex, setCurrentWordIndex] = useState(-1);
   const [isControlsOpen, setIsControlsOpen] = useState(false);
+  
+  const highlightRef = useRef<HTMLElement | null>(null);
+  const originalContentRef = useRef<string>('');
 
   // Load voices
   useEffect(() => {
@@ -81,49 +87,156 @@ export const SpeechProvider = ({ children }: { children: ReactNode }) => {
     setSettings(prev => ({ ...prev, ...newSettings }));
   }, []);
 
-  const speak = useCallback((text: string) => {
+  const cleanupHighlight = useCallback(() => {
+    if (highlightRef.current && originalContentRef.current) {
+      highlightRef.current.innerHTML = originalContentRef.current;
+      highlightRef.current = null;
+      originalContentRef.current = '';
+    }
+    setCurrentWord('');
+    setCurrentWordIndex(-1);
+  }, []);
+
+  const speak = useCallback((text: string, element?: HTMLElement) => {
     if (!settings.enabled || !text) return;
 
     speechSynthesis.cancel();
+    cleanupHighlight();
 
-    const segments = settings.readingMode === 'word' 
-      ? text.split(/\s+/).filter(Boolean)
-      : text.split(/[.!?]+/).filter(Boolean).map(s => s.trim());
+    const cleanText = text.replace(/\s+/g, ' ').trim();
+    if (!cleanText) return;
 
-    let currentIndex = 0;
+    const words = cleanText.split(' ').filter(Boolean);
+    
+    // Store element for highlighting
+    if (element) {
+      highlightRef.current = element;
+      originalContentRef.current = element.innerHTML;
+    }
 
-    const speakNext = () => {
-      if (currentIndex >= segments.length) {
-        setIsSpeaking(false);
-        return;
-      }
+    if (settings.readingMode === 'word') {
+      // Read word by word with highlighting
+      let wordIndex = 0;
 
-      const utterance = new SpeechSynthesisUtterance(segments[currentIndex]);
-      
-      if (settings.voice) {
-        const voice = voices.find(v => v.name === settings.voice);
-        if (voice) utterance.voice = voice;
-      }
+      const speakNextWord = () => {
+        if (wordIndex >= words.length) {
+          setIsSpeaking(false);
+          cleanupHighlight();
+          return;
+        }
 
-      utterance.rate = settings.rate;
-      utterance.volume = settings.volume;
+        const word = words[wordIndex];
+        setCurrentWord(word);
+        setCurrentWordIndex(wordIndex);
 
-      utterance.onend = () => {
-        currentIndex++;
-        speakNext();
+        // Update highlight in element
+        if (highlightRef.current && originalContentRef.current) {
+          const highlightedHTML = words.map((w, i) => {
+            if (i === wordIndex) {
+              return `<span style="text-decoration: underline; text-decoration-color: hsl(217, 91%, 60%); text-decoration-thickness: 3px; text-underline-offset: 4px;">${w}</span>`;
+            }
+            return w;
+          }).join(' ');
+          highlightRef.current.innerHTML = highlightedHTML;
+        }
+
+        const utterance = new SpeechSynthesisUtterance(word);
+        
+        if (settings.voice) {
+          const voice = voices.find(v => v.name === settings.voice);
+          if (voice) utterance.voice = voice;
+        }
+
+        utterance.rate = settings.rate;
+        utterance.volume = settings.volume;
+
+        utterance.onend = () => {
+          wordIndex++;
+          speakNextWord();
+        };
+
+        utterance.onerror = () => {
+          setIsSpeaking(false);
+          cleanupHighlight();
+        };
+
+        speechSynthesis.speak(utterance);
       };
 
-      utterance.onerror = () => {
-        setIsSpeaking(false);
+      setIsSpeaking(true);
+      setIsPaused(false);
+      speakNextWord();
+    } else {
+      // Read sentence by sentence
+      const sentences = cleanText.split(/[.!?]+/).filter(s => s.trim());
+      let sentenceIndex = 0;
+
+      const speakNextSentence = () => {
+        if (sentenceIndex >= sentences.length) {
+          setIsSpeaking(false);
+          cleanupHighlight();
+          return;
+        }
+
+        const sentence = sentences[sentenceIndex].trim();
+        const sentenceWords = sentence.split(' ').filter(Boolean);
+        
+        const utterance = new SpeechSynthesisUtterance(sentence);
+        
+        if (settings.voice) {
+          const voice = voices.find(v => v.name === settings.voice);
+          if (voice) utterance.voice = voice;
+        }
+
+        utterance.rate = settings.rate;
+        utterance.volume = settings.volume;
+
+        // Track word boundaries for highlighting
+        utterance.onboundary = (event) => {
+          if (event.name === 'word' && highlightRef.current) {
+            const charIndex = event.charIndex;
+            let wordCount = 0;
+            let currentPos = 0;
+            
+            for (const word of sentenceWords) {
+              if (currentPos >= charIndex && currentPos < charIndex + word.length + 1) {
+                setCurrentWord(word);
+                setCurrentWordIndex(wordCount);
+                
+                // Update highlight
+                const highlightedHTML = sentenceWords.map((w, i) => {
+                  if (i === wordCount) {
+                    return `<span style="text-decoration: underline; text-decoration-color: hsl(217, 91%, 60%); text-decoration-thickness: 3px; text-underline-offset: 4px;">${w}</span>`;
+                  }
+                  return w;
+                }).join(' ');
+                highlightRef.current!.innerHTML = highlightedHTML;
+                break;
+              }
+              currentPos += word.length + 1;
+              wordCount++;
+            }
+          }
+        };
+
+        utterance.onend = () => {
+          sentenceIndex++;
+          speakNextSentence();
+        };
+
+        utterance.onerror = () => {
+          setIsSpeaking(false);
+          cleanupHighlight();
+        };
+
+        speechSynthesis.speak(utterance);
       };
 
-      speechSynthesis.speak(utterance);
-    };
-
-    setIsSpeaking(true);
-    setIsPaused(false);
-    speakNext();
-  }, [settings, voices]);
+      setIsSpeaking(true);
+      setIsPaused(false);
+      speakNextSentence();
+    }
+  }, [settings, voices, cleanupHighlight]);
 
   const pause = useCallback(() => {
     speechSynthesis.pause();
@@ -137,14 +250,10 @@ export const SpeechProvider = ({ children }: { children: ReactNode }) => {
 
   const stop = useCallback(() => {
     speechSynthesis.cancel();
+    cleanupHighlight();
     setIsSpeaking(false);
     setIsPaused(false);
-  }, []);
-
-  const speakElement = useCallback((element: HTMLElement) => {
-    const text = element.textContent || element.innerText;
-    speak(text);
-  }, [speak]);
+  }, [cleanupHighlight]);
 
   return (
     <SpeechContext.Provider value={{
@@ -153,11 +262,12 @@ export const SpeechProvider = ({ children }: { children: ReactNode }) => {
       voices,
       isSpeaking,
       isPaused,
+      currentWord,
+      currentWordIndex,
       speak,
       pause,
       resume,
       stop,
-      speakElement,
       isControlsOpen,
       setIsControlsOpen,
     }}>

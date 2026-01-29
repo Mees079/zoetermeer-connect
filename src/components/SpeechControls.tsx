@@ -7,6 +7,35 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useSpeech } from '@/contexts/SpeechContext';
 import { cn } from '@/lib/utils';
 
+// Helper to find the closest text-containing element
+const findTextElement = (element: HTMLElement): HTMLElement | null => {
+  // Skip if it's part of the speech controls
+  if (element.closest('[data-speech-controls]')) return null;
+  
+  // Skip buttons, inputs, and interactive elements
+  const tagName = element.tagName.toLowerCase();
+  if (['button', 'input', 'select', 'textarea', 'a'].includes(tagName)) return null;
+  
+  // Check if element has direct text content
+  const hasDirectText = Array.from(element.childNodes).some(
+    node => node.nodeType === Node.TEXT_NODE && node.textContent?.trim()
+  );
+  
+  if (hasDirectText) {
+    return element;
+  }
+  
+  // Check for text in specific text elements
+  if (['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'span', 'li', 'td', 'th', 'label', 'div'].includes(tagName)) {
+    const text = element.textContent?.trim();
+    if (text && text.length > 0) {
+      return element;
+    }
+  }
+  
+  return null;
+};
+
 export const SpeechControls = () => {
   const {
     settings,
@@ -34,29 +63,36 @@ export const SpeechControls = () => {
       // Ignore clicks on controls
       if (target.closest('[data-speech-controls]')) return;
       
-      const text = target.textContent || target.innerText;
-      if (text && text.trim()) {
-        speak(text.trim());
+      const textElement = findTextElement(target);
+      if (textElement) {
+        const text = textElement.textContent?.trim();
+        if (text) {
+          e.preventDefault();
+          e.stopPropagation();
+          speak(text, textElement);
+        }
       }
     };
 
-    document.addEventListener('click', handleClick);
-    return () => document.removeEventListener('click', handleClick);
+    document.addEventListener('click', handleClick, true);
+    return () => document.removeEventListener('click', handleClick, true);
   }, [settings.enabled, isListening, speak]);
 
-  // Add visual indicator for clickable elements when listening
+  // Add visual indicator for clickable text elements when listening
   useEffect(() => {
     if (!settings.enabled || !isListening) return;
 
     const style = document.createElement('style');
     style.id = 'speech-hover-style';
     style.textContent = `
-      body:not([data-speech-controls]) *:hover {
-        outline: 2px solid hsl(var(--primary) / 0.5) !important;
+      p:hover, h1:hover, h2:hover, h3:hover, h4:hover, h5:hover, h6:hover,
+      span:hover, li:hover, td:hover, th:hover, label:hover {
+        background-color: hsl(217 91% 60% / 0.1) !important;
         cursor: pointer !important;
+        border-radius: 4px;
       }
       [data-speech-controls], [data-speech-controls] * {
-        outline: none !important;
+        background-color: transparent !important;
       }
     `;
     document.head.appendChild(style);
@@ -84,8 +120,13 @@ export const SpeechControls = () => {
   const handleReadPage = () => {
     const mainContent = document.querySelector('main');
     if (mainContent) {
-      speak(mainContent.textContent || '');
+      speak(mainContent.textContent || '', mainContent as HTMLElement);
     }
+  };
+
+  const handleStop = () => {
+    stop();
+    setIsListening(false);
   };
 
   return (
@@ -192,7 +233,7 @@ export const SpeechControls = () => {
               </Button>
               {isSpeaking && (
                 <Button
-                  onClick={stop}
+                  onClick={handleStop}
                   size="sm"
                   variant="destructive"
                 >
@@ -242,7 +283,7 @@ export const SpeechControls = () => {
 
       {/* Status indicator */}
       {isListening && !isSpeaking && (
-        <p className="text-sm text-muted-foreground bg-card/90 px-3 py-1 rounded-full shadow">
+        <p className="text-sm text-muted-foreground bg-card/90 px-3 py-1 rounded-full shadow border">
           Klik op tekst om voor te lezen
         </p>
       )}
