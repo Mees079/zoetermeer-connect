@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Settings, Volume2, VolumeX, Mail, Bug, Type } from 'lucide-react';
+import { Settings, Volume2, Mail, Bug, Type } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import {
   DropdownMenu,
@@ -11,96 +9,20 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
-
-interface SpeechSettings {
-  enabled: boolean;
-  voice: string;
-  rate: number;
-  volume: number;
-}
+import { useSpeech } from '@/contexts/SpeechContext';
 
 export const SettingsMenu = () => {
+  const { settings: speechSettings, updateSettings } = useSpeech();
+  
   const [fontSize, setFontSize] = useState(() => {
     const saved = localStorage.getItem('fontSize');
     return saved ? parseInt(saved) : 100;
   });
-  
-  const [speechSettings, setSpeechSettings] = useState<SpeechSettings>(() => {
-    const saved = localStorage.getItem('speechSettings');
-    return saved ? JSON.parse(saved) : {
-      enabled: false,
-      voice: '',
-      rate: 1,
-      volume: 1,
-    };
-  });
-
-  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
-  const [isSpeaking, setIsSpeaking] = useState(false);
-
-  useEffect(() => {
-    const loadVoices = () => {
-      const availableVoices = speechSynthesis.getVoices();
-      const dutchVoices = availableVoices.filter(v => 
-        v.lang.startsWith('nl') || v.lang.startsWith('en')
-      );
-      setVoices(dutchVoices.length > 0 ? dutchVoices : availableVoices.slice(0, 10));
-    };
-
-    loadVoices();
-    speechSynthesis.onvoiceschanged = loadVoices;
-
-    return () => {
-      speechSynthesis.onvoiceschanged = null;
-    };
-  }, []);
 
   useEffect(() => {
     document.documentElement.style.fontSize = `${fontSize}%`;
     localStorage.setItem('fontSize', fontSize.toString());
   }, [fontSize]);
-
-  useEffect(() => {
-    localStorage.setItem('speechSettings', JSON.stringify(speechSettings));
-  }, [speechSettings]);
-
-  const speakText = (text: string) => {
-    if (!speechSettings.enabled) return;
-    
-    speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    
-    if (speechSettings.voice) {
-      const voice = voices.find(v => v.name === speechSettings.voice);
-      if (voice) utterance.voice = voice;
-    }
-    
-    utterance.rate = speechSettings.rate;
-    utterance.volume = speechSettings.volume;
-    
-    utterance.onstart = () => setIsSpeaking(true);
-    utterance.onend = () => setIsSpeaking(false);
-    utterance.onerror = () => setIsSpeaking(false);
-    
-    speechSynthesis.speak(utterance);
-  };
-
-  const toggleSpeech = () => {
-    if (isSpeaking) {
-      speechSynthesis.cancel();
-      setIsSpeaking(false);
-    } else if (speechSettings.enabled) {
-      const mainContent = document.querySelector('main');
-      if (mainContent) {
-        speakText(mainContent.textContent || '');
-      }
-    }
-  };
-
-  const stopSpeech = () => {
-    speechSynthesis.cancel();
-    setIsSpeaking(false);
-  };
 
   return (
     <DropdownMenu>
@@ -168,75 +90,13 @@ export const SettingsMenu = () => {
             </div>
             <Switch
               checked={speechSettings.enabled}
-              onCheckedChange={(enabled) => {
-                setSpeechSettings({ ...speechSettings, enabled });
-                if (!enabled) stopSpeech();
-              }}
+              onCheckedChange={(enabled) => updateSettings({ enabled })}
             />
           </div>
-
           {speechSettings.enabled && (
-            <div className="space-y-3 pl-6">
-              <div className="space-y-2">
-                <Label className="text-xs">Stem</Label>
-                <Select
-                  value={speechSettings.voice}
-                  onValueChange={(voice) => setSpeechSettings({ ...speechSettings, voice })}
-                >
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue placeholder="Selecteer stem..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {voices.map((voice) => (
-                      <SelectItem key={voice.name} value={voice.name} className="text-xs">
-                        {voice.name} ({voice.lang})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-xs">Snelheid: {speechSettings.rate.toFixed(1)}x</Label>
-                <Slider
-                  value={[speechSettings.rate]}
-                  onValueChange={([rate]) => setSpeechSettings({ ...speechSettings, rate })}
-                  min={0.5}
-                  max={2}
-                  step={0.1}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-xs">Volume: {Math.round(speechSettings.volume * 100)}%</Label>
-                <Slider
-                  value={[speechSettings.volume]}
-                  onValueChange={([volume]) => setSpeechSettings({ ...speechSettings, volume })}
-                  min={0}
-                  max={1}
-                  step={0.1}
-                />
-              </div>
-
-              <Button 
-                onClick={toggleSpeech} 
-                size="sm" 
-                className="w-full"
-                variant={isSpeaking ? "destructive" : "default"}
-              >
-                {isSpeaking ? (
-                  <>
-                    <VolumeX className="w-4 h-4 mr-2" />
-                    Stop Voorlezen
-                  </>
-                ) : (
-                  <>
-                    <Volume2 className="w-4 h-4 mr-2" />
-                    Pagina Voorlezen
-                  </>
-                )}
-              </Button>
-            </div>
+            <p className="text-xs text-muted-foreground pl-6">
+              Gebruik de zwevende knop rechtsonder om tekst voor te lezen.
+            </p>
           )}
         </div>
 
